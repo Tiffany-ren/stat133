@@ -1,0 +1,60 @@
+---
+title: "Workout1-report"
+author: "Zizi Ren"
+date: "2019/10/19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# packages
+library("dplyr")
+library("readr") 
+library("ggplot2")
+library("lubridate")
+```
+
+```{r read, echo=FALSE}
+# read data
+col_name <- c("serial_num","season","num","basin","sub_basin","name","iso_name","nature","latitude","longitude","wind","press")
+col_type <- c("cii?ccccdddd")
+ibtracs <- read_csv("../data/ibtracs-2010-2015.csv", col_names = col_name, col_types = col_type, na = c('-999','-1','0'),skip = 1)
+```
+## Introduction
+
+The IBTrACS data was gathered and merged by the Regional Specialized Meteorological Centers and other international centers. This dataset contains the most complete global set of historical tropical cyclones available. IBTrACS also aggregates historical and recent data together in one data set. For this project, exploratory data analysis will be made in accordance with informational plots.
+
+## Exploratory Data Analysis
+```{r readd,echo=FALSE}
+north_total <- sum(select(filter(ibtracs,latitude >=0),num))
+north_total
+south_total <- sum(select(filter(ibtracs,latitude<0),num))
+south_total
+world <- map_data('world')
+ggplot(ibtracs) + annotation_map(fortify(world)) + geom_point(aes(x = longitude, y = latitude, color = nature))
+```
+
+
+
+
+From this code chunk, we know that total number of storms in the north hemisphere is 147327, while the total number of storms in the south hemisohere is 41956, which is roughly one thrid of the number of storms in north hemisphere. This result is proved by the graph of trajectory of storms, where each point stands for a storm. We can see that above the equator (latitude = 0), the number of points is obviously greater than the number of points below the equator (south hemisphere). Additionally, since storms are differentiated by their nature / type, we can see clearly which type of storm are prone to stay a specific region.
+
+```{r ll, echo=FALSE}
+bs <- filter(ibtracs, basin=='EP' | basin=='NA')
+ggplot(bs) + annotation_map(fortify(world)) + geom_point(aes(x = longitude, y = latitude, color = wind))+ facet_wrap(~ season) + theme_minimal()
+```
+
+From the graph above, we are more interested in analyzing the change in trajectory of storms at Eastern Pacific area from 2010 to 2015. During the first three years, three trajectories are similar in terms of the distribution and relatively stable. However, at 2013, storms are more concentrated and less severe in terms of WMO value, as in the graoh, we can see that there are more navy blue points (lower WMO value) instead of shallow blue points. During 2014 and 2015, storms are looser, messier, and without too many patterns. 
+
+```{r j}
+month <- mutate(bs, monthh = month(ymd_hms(bs$iso_name), label = TRUE))
+ggplot(month) + annotation_map(fortify(world)) + geom_point(aes(x = longitude, y = latitude, color = press)) + facet_wrap(~ monthh) +theme_minimal()
+```
+
+From this graph above, we know that storms happened at Eastern Pacific are usually in winter, like October, November, and December. Moreover, according to the color of points, most of them are shallow, which shows the high pressure of the storms during windter. As for the trajectory, those in October and November spread out the map, while the trajectories in December are more concentrated.
+
+```{r bar}
+ggplot(ibtracs)+ geom_bar(aes(x = basin))
+```
+
+From the bar graph above, we can see that at west pacific (WP) area storms happened more frequently, while at south atlantic there is almost no storms.
