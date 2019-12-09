@@ -1,0 +1,147 @@
+---
+title: "workout03-Zizi-Ren"
+author: "Zizi Ren"
+date: "2019/12/2"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(xml2)
+library(rvest)
+library(dplyr)
+library(base)
+```
+
+## 0) Download two html files
+```{r download}
+
+
+# Read the HTML file
+abh <- read_html('abhijit_banerjee.html')
+est <- read_html('Esther_Duflo.html')
+```
+## 1) Extract simple information of the authors 
+This section, forms part of the data cleaning process.  
+Extract the names of the scholars from the HTML object  
+Extract the scholars’ aﬃliated institutions from the HTML object (NA if not speciﬁed)
+
+```{r simple}
+name_abh <- abh %>% html_nodes(xpath = '//*[@id="gsc_prf_in"]') %>%html_text()
+name_est <- est %>% html_nodes(xpath = '//*[@id="gsc_prf_in"]') %>%html_text()
+name_abh
+name_est
+insti_abh <- NA
+insti_est <- est %>% html_nodes(xpath = '//*[@class="gsc_prf_ila"]') %>%html_text()
+insti_abh
+insti_est
+```
+## 2) Extract all the papers for each author (not just the 20 most cited)
+This section also forms part of the data cleaning process.
+
+```{r}
+paperName_abh <- abh %>% html_nodes(xpath = '//*[@class="gsc_a_at"]') %>% html_text()
+mix_abh <- abh %>% html_nodes(xpath = '//*[@class="gs_gray"]') %>% html_text()
+researcher_abh <- rep("",495)
+journal_abh <- rep("",495)
+for(i in 1:990){
+  if(i %% 2 ==0){
+    journal_abh[i/2] <- mix_abh[i]
+  }else{
+    researcher_abh[(1+i)/2] <- mix_abh[i]
+  }
+}
+cite_abh <- abh %>% html_nodes(xpath = '//*[@class="gsc_a_ac gs_ibl"]') %>% html_text() %>% as.numeric()
+year_abh <- abh %>% html_nodes(xpath = '//*[@class="gsc_a_h gsc_a_hc gs_ibl"]') %>% html_text() %>% as.numeric()
+citation_abh <- data.frame(paperName_abh,researcher_abh,journal_abh,cite_abh,year_abh)
+head(citation_abh)
+write.csv(citation_abh,"citation_abh.csv")
+```
+
+```{r}
+paperName_est <- est %>% html_nodes(xpath = '//*[@class="gsc_a_at"]') %>% html_text()
+mix_est <- est %>% html_nodes(xpath = '//*[@class="gs_gray"]') %>% html_text()
+researcher_est <- rep("",491)
+journal_est <- rep("",491)
+for(i in 1:982){
+  if(i %% 2 ==0){
+    journal_est[i/2] <- mix_est[i+3]
+  }else{
+    researcher_est[(1+i)/2] <- mix_est[i+3]
+  }
+}
+cite_est <- est %>% html_nodes(xpath = '//*[@class="gsc_a_ac gs_ibl"]') %>% html_text() %>% as.numeric()
+year_est <- est %>% html_nodes(xpath = '//*[@class="gsc_a_h gsc_a_hc gs_ibl"]') %>% html_text() %>% as.numeric()
+citation_est <- data.frame(paperName_est,researcher_est,journal_est,cite_est,year_est)
+head(citation_est)
+write.csv(citation_est,"citation_est.csv")
+```
+## 3) Practice with Regular Expressions 
+Answer the following parts in the Rmd report ﬁle. Recall that you should comment on the obtained outputs (i.e. don’t just include a code chunk and its value).
+
+### a) 
+For the two scholars, how many of their paper titles begin with a word that starts with a vowel, respectively?
+```{r}
+abh_cite <- read.csv("citation_abh.csv")
+est_cite <- read.csv("citation_est.csv")
+abh_cite <- mutate(abh_cite,first = substr(paperName_abh,1,1))
+est_cite <- mutate(est_cite,first = substr(paperName_est,1,1))
+vowel_abh <- length(abh_cite[abh_cite$first == 'A' |abh_cite$first == 'E'|abh_cite$first == 'I'|abh_cite$first == 'O'|abh_cite$first == 'U',]$X)
+vowel_est <- length(est_cite[est_cite$first == 'A' |est_cite$first == 'E'|est_cite$first == 'I'|est_cite$first == 'O'|est_cite$first == 'U',]$X)
+vowel_abh
+vowel_est
+```
+
+### b)
+For the two scholars, how many of their paper titles end with “s” respectively? 
+```{r}
+last_abh <- c()
+for(i in abh_cite$X){
+  last_abh[i] <- substr(abh_cite$paperName_abh[i],length(abh_cite$paperName_abh[i]),length(abh_cite$paperName_abh[i]))
+}
+abh_cite <- mutate(abh_cite,last = last_abh)
+last_est <- c()
+for(i in est_cite$X){
+  last_est[i] <- substr(est_cite$paperName_est[i],length(est_cite$paperName_est[i]),length(est_cite$paperName_est[i]))
+}
+est_cite <- mutate(est_cite,last = last_est)
+```
+
+### c)
+For the two scholars, ﬁnd the longest title, respectively (“longest” in terms of number of characters). 
+```{r}
+lengths <- c()
+max_length <- function(data){
+  for (i in 1:length(data)){
+    lengths[i] <- nchar(data[i])
+  }
+  return(max(lengths))
+}
+abh_max <- max_length(as.character(abh_cite$paperName_abh))
+est_max <- max_length(as.character(est_cite$paperName_est))
+abh_max
+est_max
+```
+
+### d)
+For the two scholars, calculate the variable “number of punctuation symbols in the their titles”. Display summary() statistics of these variables, and the corresponding histograms. 
+```{r}
+library("stringr")
+num_punc <- c()
+puncs <- function(data){
+  for (i in 1:length(data)){
+    num_punc[i] <- str_count(data[i],',')
+  }
+  return(num_punc)
+}
+abh_punc <- puncs(as.character(abh_cite$paperName_abh))
+est_punc <- puncs(as.character(est_cite$paperName_est))
+summary(abh_punc)
+summary(est_punc)
+hist(abh_punc)
+hist(est_punc)
+```
+
+
+
+
